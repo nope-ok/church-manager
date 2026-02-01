@@ -1,0 +1,7 @@
+{
+  "name": "Church New Family Manager",
+  "description": "A specialized secretary app for managing new church members, education tracking, and small group placement based on attendance data.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
