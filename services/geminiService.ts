@@ -2,9 +2,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const analyzeSheetData = async (rawData: string): Promise<AnalysisResult> => {
+  // 함수 내부에서 초기화하여 API Key 주입 시점 문제를 해결합니다.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `
@@ -20,16 +21,11 @@ export const analyzeSheetData = async (rawData: string): Promise<AnalysisResult>
       2. Share information between couples (Region, Notes).
       
       Categorization Logic (PRIORITY ORDER):
-      1. 'placementTargets': 4 or more unique rounds attended AND NO "[배치완료]" tag in any notes. (Even if they have 8 rounds, if unplaced, they are a TARGET).
+      1. 'placementTargets': 4 or more unique rounds attended AND NO "[배치완료]" tag in any notes.
       2. 'placedMembers': 4 or more unique rounds attended AND HAS "[배치완료]" tag in notes.
-      3. 'completedMembers': 8 or more unique rounds total (regardless of placement status, but primarily for graduation tracking).
+      3. 'completedMembers': 8 or more unique rounds total.
       4. 'ongoingMembers': Everyone else with < 4 unique rounds and NO "[배치완료]" tag.
       
-      Status Mapping:
-      - placementTargets & placedMembers -> status: 'TARGET'
-      - completedMembers -> status: 'COMPLETED'
-      - ongoingMembers -> status: 'ONGOING'
-
       Raw CSV Data:
       ${rawData}
     `,
@@ -49,6 +45,5 @@ export const analyzeSheetData = async (rawData: string): Promise<AnalysisResult>
     }
   });
 
-  const jsonStr = response.text.trim();
-  return JSON.parse(jsonStr) as AnalysisResult;
+  return JSON.parse(response.text.trim()) as AnalysisResult;
 };
