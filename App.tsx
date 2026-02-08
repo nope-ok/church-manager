@@ -1,5 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+// Added missing ReactDOM import
+import ReactDOM from 'react-dom/client';
 import { analyzeSheetData } from './services/geminiService';
 import { fetchSheetData, appendEntriesToSheet } from './services/sheetService';
 import { AnalysisResult, TabType, Member } from './types';
@@ -266,8 +268,7 @@ const App: React.FC = () => {
 
   const sheetUrl = "https://docs.google.com/spreadsheets/d/1jbeyGUv0Xtvzf1HGLybj-loZY8BzVdUxA5vupH1UK0E/edit?usp=sharing";
   const prefOptions = ["부부순", "부부순 자녀와 같은 나이대", "자매순", "자매순-주말반"];
-  const alphaZones = ["정자동", "금곡동", "궁내동", "구미동"];
-  const sierraZones = ["분당동", "수내동", "서현동", "율동", "이매동", "야탑동", "판교동", "삼평동", "백현동", "운중동", "대장동", "석운동", "하산운동"];
+  const allowedZones = ["정자동", "금곡동", "구미동", "동원동", "궁내동"];
 
   const menuItems = [
     { id: TabType.IMPORT, label: '출석 입력', icon: '📥' },
@@ -643,8 +644,7 @@ const App: React.FC = () => {
                 <div className="space-y-4">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">거주 지역 선택</p>
                   <div className="flex flex-wrap gap-2">
-                    {alphaZones.map(z => <button key={z} onClick={() => setCurrentEntry({...currentEntry, residence: `${z} (알파)`})} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${currentEntry.residence === `${z} (알파)` ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-indigo-400 border-indigo-100 hover:border-indigo-300'}`}>{z}</button>)}
-                    {sierraZones.map(z => <button key={z} onClick={() => setCurrentEntry({...currentEntry, residence: `${z} (시에라)`})} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${currentEntry.residence === `${z} (시에라)` ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-emerald-400 border-emerald-100 hover:border-emerald-300'}`}>{z}</button>)}
+                    {allowedZones.map(z => <button key={z} onClick={() => setCurrentEntry({...currentEntry, residence: z})} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${currentEntry.residence === z ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-gray-400 border-gray-100 hover:border-purple-300'}`}>{z}</button>)}
                   </div>
                 </div>
                 <button disabled={isSaving} onClick={() => handleAddEntry()} className={`w-full py-5 font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center space-x-2 ${isSaving ? 'bg-gray-400 text-white' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>
@@ -767,4 +767,5 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+const rootElement = document.getElementById('root');
+if (rootElement) ReactDOM.createRoot(rootElement).render(<React.StrictMode><App /></React.StrictMode>);

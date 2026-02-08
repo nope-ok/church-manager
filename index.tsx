@@ -118,12 +118,11 @@ const appendEntriesToSheet = async (entries: any[], scriptUrl: string): Promise<
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
   try {
-    // text/plain content type to avoid CORS preflight issues
     await fetch(scriptUrl, {
       method: 'POST',
       mode: 'no-cors', 
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(entries), // author 필드 포함됨
+      body: JSON.stringify(entries), 
       signal: controller.signal
     });
     clearTimeout(timeoutId);
@@ -138,7 +137,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const analyzeSheetData = async (rawData: string): Promise<AnalysisResult> => {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Analyze church CSV data. Summarize by unique names. CATEGORIZATION: TARGET(4+ rounds, no [배치완료]), placed(4+ rounds, has [배치완료]), ONGOING(<4 rounds, no [배치완료]), COMPLETED(8+ rounds). Extract author from column J if exists. CSV: ${rawData}`,
+    contents: `Analyze church CSV data. Summarize by unique names. CATEGORIZATION: TARGET(4+ rounds, no [배치완료]), placed(4+ rounds, has [배치완료]), ONGOING(<4 rounds, no [배치완료]), COMPLETED(8+ rounds). Extract secretary/author from column J. CSV: ${rawData}`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -210,7 +209,7 @@ const MemberCard: React.FC<{ member: Member, onEdit: (m: Member) => void, onOpen
     COMPLETED: { bg: 'bg-green-100', text: 'text-green-700', label: '교육 수료' },
     ONGOING: { bg: 'bg-amber-100', text: 'text-amber-700', label: '진행 중' }
   };
-  // '기타' 라벨 삭제 - 상태가 명확하지 않으면 표시하지 않음
+  // '기타' 라벨 삭제 - 상태가 명시된 것만 표시
   const config = statusConfig[member.status] || null;
 
   return (
@@ -254,7 +253,7 @@ const MemberCard: React.FC<{ member: Member, onEdit: (m: Member) => void, onOpen
         {member.lastAuthor && (
           <div className="mt-2 flex items-center space-x-1 text-[9px] font-bold text-gray-400">
             <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"></path></svg>
-            <span>작성자: {member.lastAuthor}</span>
+            <span>최종 작성 비서: {member.lastAuthor}</span>
           </div>
         )}
       </div>
@@ -281,7 +280,7 @@ const MemberCard: React.FC<{ member: Member, onEdit: (m: Member) => void, onOpen
 const SectionHeader: React.FC<{ title: string, count: number, icon: string, colorClass: string }> = ({ title, count, icon, colorClass }) => (
   <div className={`flex items-center justify-between mb-4 mt-8 first:mt-0 pb-2 border-b-2 ${colorClass}`}>
     <div className="flex items-center space-x-2"><span className="text-xl">{icon}</span><h3 className="text-lg font-black">{title}</h3></div>
-    <span className="text-xs font-bold px-3 py-1 bg-white rounded-full border shadow-sm">{count}명</span>
+    <span className="text-xs font-bold px-3 py-1 bg-white rounded-full border shadow-sm">{count}명 대기 중</span>
   </div>
 );
 
@@ -320,7 +319,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(currentEntry)); }, [currentEntry]);
   useEffect(() => { handleSyncFromSheet(); }, []);
   
-  // Apps Script URL이 변경될 때마다 즉시 보존
+  // URL 변경 시 즉시 LocalStorage에 영구 보존
   useEffect(() => { 
     if (scriptUrl) localStorage.setItem(APPS_SCRIPT_URL_KEY, scriptUrl); 
   }, [scriptUrl]);
@@ -357,7 +356,7 @@ const App: React.FC = () => {
     
     try {
       const entryWithTime = { ...entry, timestamp: new Date().toLocaleTimeString('ko-KR', { hour12: false }) };
-      // J열에 author 필드가 들어가도록 JSON 객체 그대로 전송
+      // J열 매핑을 위해 author 필드가 포함된 객체 배열 전송
       await appendEntriesToSheet([entryWithTime], scriptUrl);
       setRecentLogs(prev => [entryWithTime, ...prev.slice(0, 9)]);
       
@@ -438,7 +437,7 @@ const App: React.FC = () => {
           </button>
         ))}
       </div>
-      <button onClick={() => setActiveTab(TabType.ADMIN)} className="mt-8 w-full text-[10px] font-bold text-gray-400 hover:text-gray-600 text-center py-2">⚙️ 관리자 설정 (URL 보존됨)</button>
+      <button onClick={() => setActiveTab(TabType.ADMIN)} className="mt-8 w-full text-[10px] font-bold text-gray-400 hover:text-gray-600 text-center py-2">⚙️ 관리자 설정 (URL 영구 보존)</button>
     </>
   );
 
@@ -448,11 +447,11 @@ const App: React.FC = () => {
       <header className="md:hidden bg-white border-b px-6 py-4 flex justify-between items-center fixed top-0 w-full z-40"><div className="flex items-center space-x-2"><div className="px-2 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white text-[10px] font-black">1516</div><h1 className="text-sm font-bold uppercase">{activeTab}</h1></div><button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 text-purple-600"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg></button></header>
       
       <main className="flex-1 p-6 md:p-10 md:ml-72 pt-24 md:pt-10 max-w-5xl mx-auto">
-        {isAnalyzing && <div className="fixed inset-0 bg-white/60 backdrop-blur-[2px] z-[999] flex flex-col items-center justify-center"><div className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4"></div><p className="font-black text-purple-900">실시간 데이터 분석 중...</p></div>}
+        {isAnalyzing && <div className="fixed inset-0 bg-white/60 backdrop-blur-[2px] z-[999] flex flex-col items-center justify-center"><div className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4"></div><p className="font-black text-purple-900">데이터 실시간 분석 중...</p></div>}
         
         {activeTab === TabType.IMPORT && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-500">
-            <div className="lg:col-span-7 bg-white rounded-3xl shadow-sm border p-8 space-y-6">
+            <div className="lg:col-span-7 bg-white rounded-3xl shadow-sm border border-gray-100 p-8 space-y-6">
               <div className="flex justify-between items-center border-b pb-4">
                 <h3 className="text-xl font-bold text-slate-800">새가족 정보 입력</h3>
                 <div className="flex flex-col items-end">
@@ -474,7 +473,7 @@ const App: React.FC = () => {
               <div className="space-y-1">
                 <p className="text-[10px] font-bold text-gray-400 ml-1">거주 지역</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {["정자동", "금곡동", "구미동", "분당동", "수내동", "서현동", "판교동", "대장동"].map(z => <button key={z} onClick={() => setCurrentEntry({...currentEntry, residence: z})} className={`px-3 py-2 text-[11px] font-bold rounded-lg border transition-all ${currentEntry.residence === z ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-gray-400 border-gray-100 hover:border-purple-300'}`}>{z}</button>)}
+                  {["정자동", "금곡동", "구미동", "동원동", "궁내동"].map(z => <button key={z} onClick={() => setCurrentEntry({...currentEntry, residence: z})} className={`px-3 py-2 text-[11px] font-bold rounded-lg border transition-all ${currentEntry.residence === z ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-gray-400 border-gray-100 hover:border-purple-300'}`}>{z}</button>)}
                 </div>
               </div>
 
@@ -497,7 +496,7 @@ const App: React.FC = () => {
               </div>
               <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                 {recentLogs.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center opacity-20"><span className="text-4xl mb-4">📥</span><p className="font-black text-sm">입력된 기록이 없습니다</p></div>
+                  <div className="h-full flex flex-col items-center justify-center opacity-20"><span className="text-4xl mb-4">📥</span><p className="font-black text-sm">기록이 없습니다</p></div>
                 ) : (
                   recentLogs.map((log, i) => (
                     <div key={i} className="p-4 rounded-xl border bg-gray-50 text-sm relative overflow-hidden group">
@@ -527,15 +526,15 @@ const App: React.FC = () => {
           <div className="bg-white rounded-3xl p-10 border shadow-sm space-y-8 animate-in zoom-in duration-300">
             <h2 className="text-2xl font-bold">관리자 설정</h2>
             {!isAuthorized ? (
-              <div className="flex space-x-2"><input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} className="flex-1 p-4 bg-gray-50 rounded-2xl border outline-none" placeholder="비밀번호" /><button onClick={() => { if(passwordInput === '1516') { setIsAuthorized(true); sessionStorage.setItem('admin_authorized', 'true'); } else { alert('비밀번호가 올바르지 않습니다.'); } }} className="px-8 bg-gray-900 text-white font-bold rounded-2xl">인증</button></div>
+              <div className="flex space-x-2"><input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} className="flex-1 p-4 bg-gray-50 rounded-2xl border outline-none" placeholder="비밀번호" /><button onClick={() => { if(passwordInput === '1516') { setIsAuthorized(true); sessionStorage.setItem('admin_authorized', 'true'); } else { alert('오류'); } }} className="px-8 bg-gray-900 text-white font-bold rounded-2xl">인증</button></div>
             ) : (
               <div className="space-y-6">
                 <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
-                  <p className="text-sm font-bold text-emerald-800 mb-2">🔗 Apps Script Web App URL (브라우저 영구 보존)</p>
-                  <input type="text" value={scriptUrl} onChange={e => setScriptUrl(e.target.value)} className="w-full p-4 border rounded-2xl text-xs outline-none focus:ring-2 focus:ring-emerald-500" placeholder="https://script.google.com/macros/s/.../exec" />
+                  <p className="text-sm font-bold text-emerald-800 mb-2">🔗 Apps Script Web App URL (자동 보존)</p>
+                  <input type="text" value={scriptUrl} onChange={e => setScriptUrl(e.target.value)} className="w-full p-4 border rounded-2xl text-xs outline-none focus:ring-2 focus:ring-emerald-500" placeholder="https://..." />
                   <p className="mt-3 text-[10px] text-emerald-600 font-black tracking-tight leading-relaxed">
-                    ※ 입력된 URL은 브라우저를 닫아도 삭제되지 않습니다. <br/>
-                    ※ 시트의 J열에 'author' 필드가 기록되도록 Apps Script 코드를 구성해 주세요.
+                    ※ 입력된 URL은 브라우저 스토리지에 즉시 보존되어 삭제되지 않습니다. <br/>
+                    ※ 시트의 J열에 'author' 필드가 기록되도록 Apps Script가 구성되어 있는지 확인하세요.
                   </p>
                 </div>
               </div>
@@ -550,8 +549,8 @@ const App: React.FC = () => {
           <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in duration-300">
             <div className={`p-6 ${getZoneTheme(placingMember.region).accent} text-white text-center`}><h3 className="text-2xl font-black">{placingMember.name}님 순 배치</h3></div>
             <div className="p-8 space-y-6">
-              <input autoFocus type="text" value={smallGroupName} onChange={e => setSmallGroupName(e.target.value)} className="w-full p-5 bg-gray-50 border-2 rounded-2xl outline-none text-center text-lg font-black focus:border-purple-500" placeholder="배치할 순 이름 (예: 정자 1순)" onKeyPress={(e) => e.key === 'Enter' && handleConfirmPlacement()} />
-              <div className="flex space-x-3"><button onClick={() => setPlacingMember(null)} className="flex-1 py-4 bg-gray-100 text-gray-500 font-bold rounded-2xl">취소</button><button disabled={isSaving || !smallGroupName.trim()} onClick={handleConfirmPlacement} className={`flex-[2] py-4 px-8 ${getZoneTheme(placingMember.region).accent} text-white font-black rounded-2xl`}>{isSaving ? "배치 중..." : "배치 확정"}</button></div>
+              <input autoFocus type="text" value={smallGroupName} onChange={e => setSmallGroupName(e.target.value)} className="w-full p-5 bg-gray-50 border-2 rounded-2xl outline-none text-center text-lg font-black focus:border-purple-500" placeholder="배치할 순 이름" onKeyPress={(e) => e.key === 'Enter' && handleConfirmPlacement()} />
+              <div className="flex space-x-3"><button onClick={() => setPlacingMember(null)} className="flex-1 py-4 bg-gray-100 text-gray-500 font-bold rounded-2xl">취소</button><button disabled={isSaving || !smallGroupName.trim()} onClick={handleConfirmPlacement} className={`flex-[2] py-4 px-8 ${getZoneTheme(placingMember.region).accent} text-white font-black rounded-2xl shadow-lg`}>{isSaving ? "배치 중..." : "배치 확정"}</button></div>
             </div>
           </div>
         </div>
@@ -563,14 +562,8 @@ const App: React.FC = () => {
           <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl">
             <div className="p-8 bg-purple-600 text-white flex justify-between items-center"><h3 className="text-xl font-bold">{editingMember.name}님 정보 수정</h3><button onClick={() => setEditingMember(null)} className="text-3xl">&times;</button></div>
             <div className="p-8 space-y-6">
-              <div className="space-y-1">
-                <p className="text-[10px] font-bold text-gray-400 ml-1">배우자</p>
-                <input type="text" value={editForm.spouseName} onChange={e => setEditForm({...editForm, spouseName: e.target.value})} className="w-full p-4 bg-gray-50 rounded-2xl border outline-none focus:ring-2 focus:ring-purple-400" placeholder="배우자" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-bold text-gray-400 ml-1">특이사항 수정</p>
-                <RichTextEditor value={editForm.notes} onChange={(val) => setEditForm({...editForm, notes: val})} placeholder="수정 사항..." />
-              </div>
+              <input type="text" value={editForm.spouseName} onChange={e => setEditForm({...editForm, spouseName: e.target.value})} className="w-full p-4 bg-gray-50 rounded-2xl border outline-none focus:ring-2 focus:ring-purple-400" placeholder="배우자" />
+              <RichTextEditor value={editForm.notes} onChange={(val) => setEditForm({...editForm, notes: val})} placeholder="수정 사항..." />
               <button disabled={isSaving} onClick={() => handleAddEntry({ ...editForm, author: currentEntry.author || '비서', classType: '정보수정', round: '0', date: new Date().toISOString().split('T')[0] })} className="w-full py-4 bg-purple-600 text-white font-bold rounded-2xl shadow-xl hover:bg-purple-700 transition-all">{isSaving ? "저장 중..." : "수정 내용 저장"}</button>
             </div>
           </div>
