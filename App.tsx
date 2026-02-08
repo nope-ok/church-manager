@@ -262,7 +262,7 @@ const App: React.FC = () => {
     return sessionStorage.getItem('admin_authorized') === 'true';
   });
   const [passwordInput, setPasswordInput] = useState('');
-  const [adminPassword] = useState<string>(() => localStorage.getItem('admin_password') || 'churchpassword123');
+  const [adminPassword] = useState<string>(() => localStorage.getItem('admin_password') || '1516');
 
   const sheetUrl = "https://docs.google.com/spreadsheets/d/1jbeyGUv0Xtvzf1HGLybj-loZY8BzVdUxA5vupH1UK0E/edit?usp=sharing";
   const prefOptions = ["부부순", "부부순 자녀와 같은 나이대", "자매순", "자매순-주말반"];
